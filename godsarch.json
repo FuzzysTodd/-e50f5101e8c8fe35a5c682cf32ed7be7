@@ -1,0 +1,82 @@
+# Architecture Overview
+
+This document contains a high-level architecture diagram (Mermaid) and short descriptions of the main components.
+
+```mermaid
+flowchart LR
+  %% Users and Clients
+  user[User] --> browser[Web App<br/>(Browser / Mobile)]
+
+  %% Edge
+  browser --> cdn[CDN]
+  cdn --> lb[Load Balancer]
+
+  %% Ingress / API Gateway
+  lb --> ingress[API Gateway / Ingress]
+
+  %% Core Services
+  ingress --> auth[Auth Service<br/>(OAuth / JWT)]
+  ingress --> apiA[API Service A<br/>(Orders)]
+  ingress --> apiB[API Service B<br/>(Products)]
+
+  %% Data plane
+  apiA --> db[(Primary DB<br/>Postgres)]
+  apiB --> db
+  apiA --> cache[(Cache<br/>Redis)]
+  apiB --> cache
+  apiA --> mq[(Message Queue<br/>Kafka / RabbitMQ)]
+  mq --> workers[Background Workers]
+  workers --> db
+  apiA --> storage[(Object Storage<br/>S3)]
+  apiB --> ext[External APIs]
+
+  %% Infrastructure
+  subgraph infra [Kubernetes Cluster]
+    ingress
+    apiA
+    apiB
+    workers
+  end
+
+  infra --> monitoring[Monitoring & Logging<br/>(Prometheus / Grafana / ELK)]
+  infra --> tracing[Distributed Tracing<br/>(Jaeger / Zipkin)]
+
+  %% CI/CD & Source
+  repo[Source Repo (GitHub / GitLab)] --> ci[CI/CD<br/>(GitHub Actions / GitLab CI)]
+  ci --> infra
+
+  %% Users of events / async consumers
+  extConsumer[External Consumers] --> mq
+
+  %% Optional: Admin / Ops
+  admin[Admin / Console] --> ingress
+  admin --> monitoring
+
+  %% Styling (optional)
+  classDef infraStyle fill:#f8f9fb,stroke:#cfe2ff;
+  class infra infraStyle;
+  class db,mq,cache,storage fill:#fff7e6,stroke:#f5c26b;
+```
+
+## Components (brief)
+- User / Web App: Browser or mobile client.
+- CDN & Load Balancer: Edge caching and traffic distribution.
+- API Gateway / Ingress: Routing, rate limiting, authentication entry point.
+- Auth Service: Issues/verifies JWTs or handles OAuth flows.
+- API Services: Small, focused microservices (Orders, Products, etc.).
+- Primary DB: Relational datastore (Postgres) for transactional data.
+- Cache: Low-latency reads (Redis).
+- Message Queue: Event-driven / async communication (Kafka / RabbitMQ).
+- Background Workers: Process jobs, consumers of message queue.
+- Object Storage: S3-compatible storage for blobs, assets, backups.
+- External APIs: Third-party integrations.
+- Kubernetes Cluster: Hosts services, scaling and deployment boundary.
+- Monitoring & Tracing: Prometheus, Grafana, ELK, Jaeger for observability.
+- CI/CD & Repo: Source control and pipeline to build, test, deploy.
+
+## How to render
+- Use a Markdown renderer that supports Mermaid (e.g., VS Code + Mermaid Preview, GitHub (if enabled), or Mermaid Live Editor).
+- To export an image, paste the mermaid block into the Mermaid Live Editor or use tooling like mermaid-cli.
+
+## Notes
+- This is a generic, adaptable overview. Replace services/names with specifics from your stack (e.g., MySQL instead of Postgres, or GCP services).
